@@ -2,6 +2,7 @@ import {createServer} from "http";
 import {env} from "./env";
 import express from "express";
 import cors from "cors";
+import { authRouter } from "./auth/routes/auth.route"; 
 
 // Create Express app
 export const app = express();
@@ -9,7 +10,7 @@ export const app = express();
 // Middlewares
 app.use(
     cors({
-        origin: true,  // Autorise toutes les origines
+        origin: true, 
         credentials: true,
     }),
 );
@@ -18,6 +19,9 @@ app.use(express.json());
 
 // Serve static files (Socket.io test client)
 app.use(express.static('public'));
+
+// Download the auth routes
+app.use("/api/auth", authRouter);
 
 // Health check endpoint
 app.get("/api/health", (_req, res) => {
