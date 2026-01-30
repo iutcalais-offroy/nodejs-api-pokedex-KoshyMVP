@@ -60,7 +60,7 @@ async function main() {
 
     console.log(`✅ Created starter deck `);
 
-    const createStarerDack = async (userId: number, username: string) => {
+    const createStarerDeck = async (userId: number, username: string) => {
         // Shuffle the cards
         const shuffleCards = [...createdCards].sort(() => Math.random() - 0.5);
         const selectCards = shuffleCards.slice(0, 10);
@@ -86,8 +86,8 @@ async function main() {
         console.log(`✅ Created starter deck for ${username}`);
     };
 
-    await createStarerDack(redUser.id, redUser.username);
-    await createStarerDack(blueUser.id, blueUser.username);
+    await createStarerDeck(redUser.id, redUser.username);
+    await createStarerDeck(blueUser.id, blueUser.username);
 
     console.log(`✅ Created ${pokemonData.length} Pokemon cards`);
 
