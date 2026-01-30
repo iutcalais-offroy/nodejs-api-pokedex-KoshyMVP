@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
@@ -38,6 +38,7 @@ model Card {
   imgUrl        String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  decks         DeckCard[]
 }
 
 model User {
@@ -47,4 +48,23 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  decks     Deck[]
+}
+
+model Deck {
+  id        Int      @id @default(autoincrement())
+  name      String
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User       @relation(fields: [userId], references: [id])
+  cards     DeckCard[]
+}
+
+model DeckCard {
+  id     Int @id @default(autoincrement())
+  deckId Int
+  cardId Int
+  deck   Deck @relation(fields: [deckId], references: [id])
+  card   Card @relation(fields: [cardId], references: [id])
 }
