@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import { authRouter } from "./auth/routes/auth.route"; 
 import { cardRouter } from "./cards/routes/card.route"; 
+import { deckRouter } from "./decks/routes/deck.route";
 
 // Create Express app
 export const app = express();
@@ -24,6 +25,7 @@ app.use(express.static('public'));
 // Routes
 app.use("/api/auth", authRouter);
 app.use("/api/cards", cardRouter);
+app.use("/api/decks", deckRouter);
 
 // Health check endpoint
 app.get("/api/health", (_req, res) => {
