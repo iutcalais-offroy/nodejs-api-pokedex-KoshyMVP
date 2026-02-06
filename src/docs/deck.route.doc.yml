@@ -42,3 +42,23 @@ paths:
       responses:
         '200':
           description: List of decks
+
+  /api/decks/{id}:
+    delete:
+      tags:
+        - Decks
+      summary: Delete a deck
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Deck deleted
+        '403':
+          description: Forbidden (not the owner)
+        '404':
+          description: Deck not found
