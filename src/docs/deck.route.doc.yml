@@ -1,0 +1,64 @@
+paths:
+  /api/decks:
+    post:
+      tags:
+        - Decks
+      summary: Create a new deck
+      security:
+        - bearerAuth: [] 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - cards
+              properties:
+                name:
+                  type: string
+                  example: "Mon Deck FEU"
+                cards:
+                  type: array
+                  items:
+                    type: integer
+                  example: [152, 153, 154, 155, 156, 157, 158, 159, 160, 161]
+      responses:
+        '201':
+          description: Deck created successfully
+        '400':
+          description: Invalid input (e.g., not 10 cards)
+        '401':
+          description: Unauthorized (missing or invalid token)
+
+  /api/decks/mine:
+    get:
+      tags:
+        - Decks
+      summary: Get all decks of the connected user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of decks
+
+  /api/decks/{id}:
+    delete:
+      tags:
+        - Decks
+      summary: Delete a deck
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Deck deleted
+        '403':
+          description: Forbidden (not the owner)
+        '404':
+          description: Deck not found

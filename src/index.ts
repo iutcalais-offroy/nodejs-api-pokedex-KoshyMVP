@@ -1,10 +1,13 @@
-import {createServer} from "http";
-import {env} from "./env";
+import { createServer } from "http";
+import { env } from "./env";
 import express from "express";
 import cors from "cors";
+import swaggerUi from 'swagger-ui-express';
 import { authRouter } from "./auth/routes/auth.route"; 
 import { cardRouter } from "./cards/routes/card.route"; 
 import { deckRouter } from "./decks/routes/deck.route";
+import { swaggerDocument } from './docs';
+
 
 // Create Express app
 export const app = express();
@@ -18,6 +21,12 @@ app.use(
 );
 
 app.use(express.json());
+
+// Documentation Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: "API Documentation"
+}))
 
 // Serve static files (Socket.io test client)
 app.use(express.static('public'));

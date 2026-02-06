@@ -1,0 +1,70 @@
+paths:
+  /api/auth/sign-up:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "valentin@minnebo.com"
+                password:
+                  type: string
+                  format: password
+                  example: "BloquerEnGold62!"
+      responses:
+        '201':
+          description: User created successfully
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/sign-in:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and return a JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  example: "valentin@minnebo.com"
+                password:
+                  type: string
+                  example: "BloquerEnGold62!"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1..."
+        '401':
+          description: Invalid credentials

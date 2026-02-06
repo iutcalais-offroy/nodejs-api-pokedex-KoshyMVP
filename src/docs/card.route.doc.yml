@@ -1,0 +1,15 @@
+paths:
+  /api/cards:
+    get:
+      tags:
+        - Cards
+      summary: Liste toutes les cartes
+      responses:
+        '200':
+          description: Liste des cartes Pokémon
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Card'
