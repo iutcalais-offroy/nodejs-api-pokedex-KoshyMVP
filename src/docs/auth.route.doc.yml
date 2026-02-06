@@ -1,0 +1,27 @@
+paths:
+  /api/auth/sign-up:
+    post:
+      tags:
+        - Authentication
+      summary: Créer un compte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '201':
+          description: Utilisateur créé
+
+  /api/auth/sign-in:
+    post:
+      tags:
+        - Authentication
+      summary: Connexion utilisateur
+      responses:
+        '200':
+          description: Succès avec retour du token

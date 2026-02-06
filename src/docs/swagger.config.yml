@@ -1,0 +1,46 @@
+openapi: 3.0.0
+info:
+  title: Pokedex TCG API
+  version: 1.0.0
+  description: Documentation de l'API Pokedex avec authentification JWT
+  contact:
+    name: Simon Leclercq-Speter
+    email: simon.leclercq-speter@etu.univ-littoral.fr
+
+servers:
+  - url: http://localhost:3001
+    description: Serveur de développement
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Card:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        pokedexNumber:
+          type: integer
+    
+    Deck:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        userId:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
