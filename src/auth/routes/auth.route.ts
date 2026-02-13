@@ -42,7 +42,7 @@ authRouter.post('/sign-up', async (req: Request, res: Response) => {
       token,
       user: { id: user.id, username: user.username, email: user.email },
     })
-  } catch (error) {
+  } catch {
     return res.status(500).json({ error: 'Server error' })
   }
 })
@@ -73,7 +73,7 @@ authRouter.post('/sign-in', async (req: Request, res: Response) => {
       token,
       user: { id: user.id, username: user.username, email: user.email },
     })
-  } catch (error) {
+  } catch {
     return res.status(500).json({ error: 'Server error' })
   }
 })

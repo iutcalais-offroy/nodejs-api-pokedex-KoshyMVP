@@ -30,7 +30,7 @@ export const authenticateToken = (
 
     // Call the next middleware
     return next()
-  } catch (error) {
+  } catch {
     // 401 if the token is invalid
     return res.status(401).json({ error: 'Invalid or expired token' })
   }
