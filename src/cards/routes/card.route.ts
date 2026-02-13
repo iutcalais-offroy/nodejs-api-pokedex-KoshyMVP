@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import * as cardController from '../controllers/card.controller';
+import { Router } from 'express'
+import * as cardController from '../controllers/card.controller'
 
-export const cardRouter = Router();
+export const cardRouter = Router()
 
 // GET /api/cards
-cardRouter.get('/', cardController.getCards);
+cardRouter.get('/', cardController.getCards)

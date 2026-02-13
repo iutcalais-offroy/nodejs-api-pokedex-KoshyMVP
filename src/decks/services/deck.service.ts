@@ -1,4 +1,4 @@
-import { prisma } from '../../database';
+import { prisma } from '../../database'
 
 /**
  * Creates a new deck for a specified user.
@@ -10,28 +10,34 @@ import { prisma } from '../../database';
  * @throws {Error} If one or more card IDs do not exist in the database
  * @throws {Error} If the user already has a deck with the same name
  */
-export const createDeck = async (userId: number, name: string, cardIds: number[]) => {
-    // Check if the cards exist
-    const existingCards = await prisma.card.findMany({
-        where: { id: { in: cardIds } }
-    });
+export const createDeck = async (
+  userId: number,
+  name: string,
+  cardIds: number[],
+) => {
+  // Check if the cards exist
+  const existingCards = await prisma.card.findMany({
+    where: { id: { in: cardIds } },
+  })
 
-    if (existingCards.length !== 10) {
-        throw new Error('Invalid cards: Some cards do not exist or duplicate IDs used');
-    }
+  if (existingCards.length !== 10) {
+    throw new Error(
+      'Invalid cards: Some cards do not exist or duplicate IDs used',
+    )
+  }
 
-    // Create the deck transactionally
-    return await prisma.deck.create({
-        data: {
-            name,
-            userId,
-            cards: {
-                create: cardIds.map(id => ({ cardId: id }))
-            }
-        },
-        include: { cards: { include: { card: true } } }
-    });
-};
+  // Create the deck transactionally
+  return await prisma.deck.create({
+    data: {
+      name,
+      userId,
+      cards: {
+        create: cardIds.map((id) => ({ cardId: id })),
+      },
+    },
+    include: { cards: { include: { card: true } } },
+  })
+}
 
 /**
  * Retrieves all decks belonging to a specific user.
@@ -41,11 +47,11 @@ export const createDeck = async (userId: number, name: string, cardIds: number[]
  * @async
  */
 export const getUserDecks = async (userId: number) => {
-    return await prisma.deck.findMany({
-        where: { userId },
-        include: { cards: { include: { card: true } } }
-    });
-};
+  return await prisma.deck.findMany({
+    where: { userId },
+    include: { cards: { include: { card: true } } },
+  })
+}
 
 /**
  * Retrieves a specific deck by its ID.
@@ -55,11 +61,11 @@ export const getUserDecks = async (userId: number) => {
  * @async
  */
 export const getDeckById = async (deckId: number) => {
-    return await prisma.deck.findUnique({
-        where: { id: deckId },
-        include: { cards: { include: { card: true } } }
-    });
-};
+  return await prisma.deck.findUnique({
+    where: { id: deckId },
+    include: { cards: { include: { card: true } } },
+  })
+}
 
 /**
  * Updates an existing deck's name and cards.
@@ -71,28 +77,32 @@ export const getDeckById = async (deckId: number) => {
  * @throws {Error} If the provided card IDs are invalid or not exactly 10
  * @async
  */
-export const updateDeck = async (deckId: number, name: string, cardIds: number[]) => {
-    // Check if cards was provided
-    const existingCards = await prisma.card.findMany({
-        where: { id: { in: cardIds } }
-    });
-    if (existingCards.length !== 10) throw new Error('Invalid cards');
+export const updateDeck = async (
+  deckId: number,
+  name: string,
+  cardIds: number[],
+) => {
+  // Check if cards was provided
+  const existingCards = await prisma.card.findMany({
+    where: { id: { in: cardIds } },
+  })
+  if (existingCards.length !== 10) throw new Error('Invalid cards')
 
-    // Use prisma transaction for delete or update the deck
-    return await prisma.$transaction(async (tx) => {
-        await tx.deckCard.deleteMany({ where: { deckId } });
-        return await tx.deck.update({
-            where: { id: deckId },
-            data: {
-                name,
-                cards: {
-                    create: cardIds.map(id => ({ cardId: id }))
-                }
-            },
-            include: { cards: { include: { card: true } } }
-        });
-    });
-};
+  // Use prisma transaction for delete or update the deck
+  return await prisma.$transaction(async (tx) => {
+    await tx.deckCard.deleteMany({ where: { deckId } })
+    return await tx.deck.update({
+      where: { id: deckId },
+      data: {
+        name,
+        cards: {
+          create: cardIds.map((id) => ({ cardId: id })),
+        },
+      },
+      include: { cards: { include: { card: true } } },
+    })
+  })
+}
 
 /**
  * Deletes a deck from the database.
@@ -104,7 +114,7 @@ export const updateDeck = async (deckId: number, name: string, cardIds: number[]
  * @async
  */
 export const deleteDeck = async (deckId: number) => {
-    // Cascade delete
-    await prisma.deckCard.deleteMany({ where: { deckId } });
-    return await prisma.deck.delete({ where: { id: deckId } });
-};
+  // Cascade delete
+  await prisma.deckCard.deleteMany({ where: { deckId } })
+  return await prisma.deck.delete({ where: { id: deckId } })
+}

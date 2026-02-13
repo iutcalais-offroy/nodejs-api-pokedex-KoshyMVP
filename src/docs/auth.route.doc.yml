@@ -18,11 +18,11 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: "valentin@minnebo.com"
+                  example: 'valentin@minnebo.com'
                 password:
                   type: string
                   format: password
-                  example: "BloquerEnGold62!"
+                  example: 'BloquerEnGold62!'
       responses:
         '201':
           description: User created successfully
@@ -51,10 +51,10 @@ paths:
               properties:
                 email:
                   type: string
-                  example: "valentin@minnebo.com"
+                  example: 'valentin@minnebo.com'
                 password:
                   type: string
-                  example: "BloquerEnGold62!"
+                  example: 'BloquerEnGold62!'
       responses:
         '200':
           description: Login successful
@@ -65,6 +65,6 @@ paths:
                 properties:
                   token:
                     type: string
-                    example: "eyJhbGciOiJIUzI1..."
+                    example: 'eyJhbGciOiJIUzI1...'
         '401':
           description: Invalid credentials

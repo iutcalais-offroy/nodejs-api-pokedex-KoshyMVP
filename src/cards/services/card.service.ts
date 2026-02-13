@@ -1,4 +1,4 @@
-import { prisma } from '../../database';
+import { prisma } from '../../database'
 
 /**
  * Retrieves the full list of Pokémon cards from the database.
@@ -9,10 +9,10 @@ import { prisma } from '../../database';
  * @async
  */
 export const getAllCards = async () => {
-    // Sort by increasing pokedexNumber
-    return await prisma.card.findMany({
-        orderBy: {
-            pokedexNumber: 'asc'
-        }
-    });
-};
+  // Sort by increasing pokedexNumber
+  return await prisma.card.findMany({
+    orderBy: {
+      pokedexNumber: 'asc',
+    },
+  })
+}
