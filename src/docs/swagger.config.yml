@@ -28,7 +28,7 @@ components:
           type: string
         pokedexNumber:
           type: integer
-    
+
     Deck:
       type: object
       properties:
