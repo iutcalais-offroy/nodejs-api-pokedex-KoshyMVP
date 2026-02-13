@@ -26,8 +26,12 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+
+      - name: Run all checks
+        run: npm run check
         env:
-        DATABASE_URL: postgresql://tcg_user:tcg_password@localhost:5432/tcg_database
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: Run linter
         run: npm run lint
