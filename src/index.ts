@@ -7,6 +7,7 @@ import { authRouter } from "./auth/routes/auth.route";
 import { cardRouter } from "./cards/routes/card.route"; 
 import { deckRouter } from "./decks/routes/deck.route";
 import { swaggerDocument } from './docs';
+import { PokedexServer } from "./socket/PokedexServer"; 
 
 
 // Create Express app
@@ -44,6 +45,9 @@ app.get("/api/health", (_req, res) => {
 // Start server only if this file is run directly
 if (require.main === module) {
     const httpServer = createServer(app);
+
+    // Initialization Socket.io
+    new PokedexServer(httpServer);
 
     try {
         httpServer.listen(env.PORT, () => {
