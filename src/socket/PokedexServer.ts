@@ -2,7 +2,7 @@ import { Server as HTTPServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { env } from '../env';
-import { prisma } from '../database'; 
+import { prisma } from '../database';
 
 interface Room {
     id: string;
@@ -26,25 +26,18 @@ export class PokedexServer {
 
     private setupAuthentication() {
         this.io.use((socket, next) => {
-            // Retrieve token sent by the HTML client via socket.handshake.auth.token
             const token = socket.handshake.auth.token;
 
             if (!token) {
-                // Connection refused if token is missing
                 return next(new Error("Connection refused: Token missing"));
             }
 
             try {
-                // Verify JWT token
                 const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number, email: string };
-                
-                // Inject user information into the socket object (Requirement)
                 socket.data.userId = decoded.userId;
                 socket.data.email = decoded.email;
-                
-                next(); // Connection accepted
+                next();
             } catch (err) {
-                // Connection refused if token is invalid
                 next(new Error("Connection refused: Invalid token"));
             }
         });
@@ -57,18 +50,18 @@ export class PokedexServer {
             // --- EVENT: createRoom ---
             socket.on('createRoom', async ({ deckId }) => {
                 try {
-                    // Check deck in database via Prisma
                     const deck = await prisma.deck.findUnique({
                         where: { id: deckId },
                         include: { _count: { select: { cards: true } } }
                     });
 
-                    // Requirements: Valid deck (10 cards) and must belong to the user
                     if (!deck || deck.userId !== socket.data.userId) {
-                        return socket.emit('error', 'This deck does not belong to you');
+                        socket.emit('error', 'This deck does not belong to you');
+                        return; 
                     }
                     if (deck._count.cards !== 10) {
-                        return socket.emit('error', 'The deck must contain exactly 10 cards');
+                        socket.emit('error', 'The deck must contain exactly 10 cards');
+                        return;
                     }
 
                     const roomId = `room_${socket.id}`;
@@ -80,11 +73,9 @@ export class PokedexServer {
                     };
 
                     this.rooms.set(roomId, newRoom);
-                    socket.join(roomId); 
+                    socket.join(roomId);
 
-                    // Confirmation sent to the creator
                     socket.emit('roomCreated', newRoom); 
-                    // Broadcast updated list to all clients
                     this.io.emit('roomsListUpdated', Array.from(this.rooms.values())); 
                     
                 } catch (error) {
@@ -94,7 +85,6 @@ export class PokedexServer {
 
             // --- EVENT: getRooms ---
             socket.on('getRooms', () => {
-                // Returns only available rooms for matchmaking
                 socket.emit('roomsListUpdated', Array.from(this.rooms.values()));
             });
 
@@ -103,23 +93,28 @@ export class PokedexServer {
                 try {
                     const room = this.rooms.get(roomId);
 
-                    if (!room) return socket.emit('error', 'Room not found');
-                    if (room.hostId === socket.data.userId) return socket.emit('error', 'You are already the host');
+                    if (!room) {
+                        socket.emit('error', 'Room not found');
+                        return; 
+                    }
+                    if (room.hostId === socket.data.userId) {
+                        socket.emit('error', 'You are already the host');
+                        return;
+                    }
 
-                    // Check second player's deck validity
                     const deck = await prisma.deck.findUnique({
                         where: { id: deckId },
                         include: { _count: { select: { cards: true } } }
                     });
 
                     if (!deck || deck.userId !== socket.data.userId || deck._count.cards !== 10) {
-                        return socket.emit('error', 'Invalid or unauthorized deck');
+                        socket.emit('error', 'Invalid or unauthorized deck');
+                        return; 
                     }
 
                     socket.join(roomId);
-                    this.rooms.delete(roomId);
+                    this.rooms.delete(roomId); 
 
-                    // Automatically start the game for both players
                     this.io.to(roomId).emit('gameStarted', {
                         roomId,
                         players: [
@@ -128,7 +123,6 @@ export class PokedexServer {
                         ]
                     });
 
-                    // Broadcast list update (room removed)
                     this.io.emit('roomsListUpdated', Array.from(this.rooms.values())); 
 
                 } catch (error) {
@@ -137,7 +131,6 @@ export class PokedexServer {
             });
 
             socket.on('disconnect', () => {
-                // Cleanup: Remove room if the host disconnects before the game starts
                 const userRoomId = `room_${socket.id}`;
                 if (this.rooms.has(userRoomId)) {
                     this.rooms.delete(userRoomId);
