@@ -4,28 +4,40 @@ import jwt from 'jsonwebtoken';
 import { env } from '../env';
 import { prisma } from '../database';
 
-interface Room {
+// Interfaces for Game State
+interface GamePlayer {
+    id: number;
+    name: string;
+    socketId: string;
+    deck: any[];
+    hand: any[];
+    activeCard: any | null;
+    score: number;
+}
+
+interface GameRoom {
     id: string;
-    hostId: number;
-    hostName: string;
-    hostDeckId: number;
+    players: GamePlayer[];
+    turnIndex: number; 
 }
 
 export class PokedexServer {
     private io: Server;
-    private rooms: Map<string, Room> = new Map();
+    private rooms: Map<string, GameRoom> = new Map();
 
     constructor(httpServer: HTTPServer) {
         this.io = new Server(httpServer, {
             cors: { origin: '*' },
         });
 
+        // Use Authentication Middleware
         this.setupAuthentication();
         this.initializeEvents();
     }
 
     private setupAuthentication() {
         this.io.use((socket, next) => {
+            // Retrieve token sent by HTML client
             const token = socket.handshake.auth.token;
 
             if (!token) {
@@ -33,9 +45,13 @@ export class PokedexServer {
             }
 
             try {
+                // JWT Verification
                 const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: number, email: string };
+                
+                // Inject info into socket (Requirement)
                 socket.data.userId = decoded.userId;
                 socket.data.email = decoded.email;
+                
                 next();
             } catch (err) {
                 next(new Error("Connection refused: Invalid token"));
@@ -50,93 +66,162 @@ export class PokedexServer {
             // --- EVENT: createRoom ---
             socket.on('createRoom', async ({ deckId }) => {
                 try {
-                    const deck = await prisma.deck.findUnique({
-                        where: { id: deckId },
-                        include: { _count: { select: { cards: true } } }
+                    const deck = await prisma.deck.findUnique({ 
+                        where: { id: deckId }, 
+                        include: { cards: { include: { card: true } } } 
                     });
 
-                    if (!deck || deck.userId !== socket.data.userId) {
-                        socket.emit('error', 'This deck does not belong to you');
-                        return; 
-                    }
-                    if (deck._count.cards !== 10) {
-                        socket.emit('error', 'The deck must contain exactly 10 cards');
-                        return;
+                    // Verification: Deck must exist, belong to user, and have 10 cards
+                    if (!deck || deck.userId !== socket.data.userId || deck.cards.length !== 10) {
+                        socket.emit('error', "Invalid deck (must be 10 cards)");
+                        return; // Fix TS7030
                     }
 
-                    const roomId = `room_${socket.id}`;
-                    const newRoom: Room = {
-                        id: roomId,
-                        hostId: socket.data.userId,
-                        hostName: socket.data.email,
-                        hostDeckId: deckId
+                    const room: GameRoom = {
+                        id: `room_${socket.id}`,
+                        players: [{
+                            id: socket.data.userId,
+                            name: socket.data.email,
+                            socketId: socket.id,
+                            deck: deck.cards.map(c => ({ ...c.card, hp: c.card.hp })), // Clone card with HP
+                            hand: [],
+                            activeCard: null,
+                            score: 0
+                        }],
+                        turnIndex: 0
                     };
 
-                    this.rooms.set(roomId, newRoom);
-                    socket.join(roomId);
-
-                    socket.emit('roomCreated', newRoom); 
-                    this.io.emit('roomsListUpdated', Array.from(this.rooms.values())); 
-                    
+                    this.rooms.set(room.id, room);
+                    socket.join(room.id);
+                    this.io.emit('roomsListUpdated', Array.from(this.rooms.values()));
                 } catch (error) {
-                    socket.emit('error', 'Server error during room creation');
+                    socket.emit('error', "Server error");
                 }
-            });
-
-            // --- EVENT: getRooms ---
-            socket.on('getRooms', () => {
-                socket.emit('roomsListUpdated', Array.from(this.rooms.values()));
             });
 
             // --- EVENT: joinRoom ---
             socket.on('joinRoom', async ({ roomId, deckId }) => {
                 try {
                     const room = this.rooms.get(roomId);
-
-                    if (!room) {
-                        socket.emit('error', 'Room not found');
+                    if (!room || room.players.length >= 2) {
+                        socket.emit('error', "Room full or not found");
                         return; 
                     }
-                    if (room.hostId === socket.data.userId) {
-                        socket.emit('error', 'You are already the host');
-                        return;
-                    }
 
-                    const deck = await prisma.deck.findUnique({
-                        where: { id: deckId },
-                        include: { _count: { select: { cards: true } } }
+                    const deck = await prisma.deck.findUnique({ 
+                        where: { id: deckId }, 
+                        include: { cards: { include: { card: true } } } 
                     });
 
-                    if (!deck || deck.userId !== socket.data.userId || deck._count.cards !== 10) {
-                        socket.emit('error', 'Invalid or unauthorized deck');
+                    if (!deck || deck.userId !== socket.data.userId || deck.cards.length !== 10) {
+                        socket.emit('error', "Invalid deck");
                         return; 
                     }
+
+                    room.players.push({
+                        id: socket.data.userId,
+                        name: socket.data.email,
+                        socketId: socket.id,
+                        deck: deck.cards.map(c => ({ ...c.card, hp: c.card.hp })),
+                        hand: [],
+                        activeCard: null,
+                        score: 0
+                    });
 
                     socket.join(roomId);
-                    this.rooms.delete(roomId); 
-
-                    this.io.to(roomId).emit('gameStarted', {
-                        roomId,
-                        players: [
-                            { id: room.hostId, name: room.hostName, host: true },
-                            { id: socket.data.userId, name: socket.data.email, host: false }
-                        ]
-                    });
-
-                    this.io.emit('roomsListUpdated', Array.from(this.rooms.values())); 
-
+                    // Start game automatically when 2 players are present
+                    this.io.to(roomId).emit('gameStarted', { roomId });
+                    this.broadcastGameState(room);
                 } catch (error) {
-                    socket.emit('error', 'Error while joining room');
+                    socket.emit('error', "Join error");
+                }
+            });
+
+            // --- EVENT: drawCards ---
+            socket.on('drawCards', ({ roomId }) => {
+                const room = this.rooms.get(roomId);
+                if (!this.checkTurn(socket, room)) return;
+
+                const player = room!.players[room!.turnIndex];
+                // Draw up to 5 cards maximum
+                while (player.hand.length < 5 && player.deck.length > 0) {
+                    player.hand.push(player.deck.shift());
+                }
+                this.broadcastGameState(room!);
+            });
+
+            // --- EVENT: playCard ---
+            socket.on('playCard', ({ roomId, cardIndex }) => {
+                const room = this.rooms.get(roomId);
+                if (!this.checkTurn(socket, room)) return;
+
+                const player = room!.players[room!.turnIndex];
+                // Only 1 active card allowed on field
+                if (player.activeCard || !player.hand[cardIndex]) {
+                    socket.emit('error', "Move illegal (Active card already present or invalid index)");
+                    return;
+                }
+
+                player.activeCard = player.hand.splice(cardIndex, 1)[0];
+                this.broadcastGameState(room!);
+            });
+
+            // --- EVENT: attack ---
+            socket.on('attack', ({ roomId }) => {
+                const room = this.rooms.get(roomId);
+                if (!this.checkTurn(socket, room)) return;
+
+                const attacker = room!.players[room!.turnIndex];
+                const defender = room!.players[room!.turnIndex === 0 ? 1 : 0];
+
+                if (!attacker.activeCard || !defender.activeCard) {
+                    socket.emit('error', "Active cards missing for attack");
+                    return;
+                }
+
+                // Damage Calculation (Basic logic, apply type weaknesses here if needed)
+                defender.activeCard.hp -= attacker.activeCard.attack;
+                
+                // Score increases if opponent card is KO (HP <= 0)
+                if (defender.activeCard.hp <= 0) {
+                    attacker.score += 1;
+                    defender.activeCard = null;
+                }
+
+                // Victory detection (first to 3 points)
+                if (attacker.score >= 3) {
+                    this.io.to(roomId).emit('gameEnded', { winner: attacker.name });
+                    this.rooms.delete(roomId);
+                } else {
+                    room!.turnIndex = room!.turnIndex === 0 ? 1 : 0; 
+                    this.broadcastGameState(room!);
                 }
             });
 
             socket.on('disconnect', () => {
-                const userRoomId = `room_${socket.id}`;
-                if (this.rooms.has(userRoomId)) {
-                    this.rooms.delete(userRoomId);
-                    this.io.emit('roomsListUpdated', Array.from(this.rooms.values()));
-                }
                 console.log("Client disconnected");
+            });
+        });
+    }
+
+    // Helper to validate if it's the player's turn
+    private checkTurn(socket: Socket, room?: GameRoom): boolean {
+        if (!room || room.players[room.turnIndex].socketId !== socket.id) {
+            socket.emit('error', "It is not your turn");
+            return false;
+        }
+        return true;
+    }
+
+    // Broadcast game state with security constraints (Hidden opponent info)
+    private broadcastGameState(room: GameRoom) {
+        room.players.forEach(player => {
+            const opponent = room.players.find(p => p.socketId !== player.socketId);
+            // Opponent's hand is never exposed (Security Requirement)
+            this.io.to(player.socketId).emit('gameStateUpdated', {
+                me: { hand: player.hand, activeCard: player.activeCard, score: player.score },
+                opponent: { handCount: opponent?.hand.length, activeCard: opponent?.activeCard, score: opponent?.score },
+                currentPlayerSocketId: room.players[room.turnIndex].socketId
             });
         });
     }
